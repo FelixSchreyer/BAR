@@ -47,10 +47,10 @@ def get_U(W):
 
 def update_W(W, alpha, gradient, iteration):
     # linear
-    W = W + alpha * gradient
+    #W = W + alpha * gradient
     # e-Function
-    decay = 0.2
-    W = W + math.exp(-decay) * alpha * gradient
+    decay = 0.02
+    W = W + math.exp(-decay*iteration) * alpha * gradient
 
     return W
 
