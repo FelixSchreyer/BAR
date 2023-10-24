@@ -1,4 +1,6 @@
 import pickle
+
+import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from imblearn.over_sampling import RandomOverSampler
@@ -10,12 +12,12 @@ model = joblib.load('../Notebooks/classification_model.joblib')
 # Load Data
 X = pd.read_pickle('../Data.nosync+/X_t_train.pkl')
 y = pd.read_pickle('../Data.nosync+/y_t_train.pkl')
-X_s = pd.read_parquet('../Notebooks/turbofan_features.parquet', engine='pyarrow')
+X_s = pd.read_parquet(path='../Notebooks/turbofan_features.parquet', engine='pyarrow')
 # Define Parameters
 learning_rate = 0.1
-epochs = 60
-q = 10
-beta = 1
+epochs = 100
+q = 20
+beta = 0.01
 bias = 1
 
 
@@ -24,6 +26,8 @@ def one_sided_averaged_gradient_estimator(W, q, beta, bias, X, y, iteration):
     Creates Updated Weights based on Zeroth Order-Optimisation.
     Calculates the gradient of W in q different directions based on a loss function
 
+    :param iteration: Iteration in loop
+    :type iteration: int
     :param W: Weights used for Translation
     :type W: numpy.ndarray
     :param q: Number of Gradients created
@@ -61,7 +65,6 @@ if __name__ == '__main__':
 
     loss_hist = []
     weights = []
-    losses = []
 
     # Prep X by renaming columns and scaling data
     X = rename_columns(X_s, X)
@@ -71,6 +74,9 @@ if __name__ == '__main__':
     # Create Random Weights
     num_rows, num_cols = X.shape
     W = np.random.rand(1, num_cols)
+    W = np.ones((1, num_cols))
+    W_0 = W
+    #W = pd.read_pickle('../Algorithm/weights_2.pkl')
 
     # Check initial performance
     print("Initial performance is: ", loss_funct(W, X, y))
@@ -82,25 +88,22 @@ if __name__ == '__main__':
 
     for config in range(n_splits):
         if config % 2 == 1:
-            X_train_resampled, y_train_resampled = oversampler.fit_resample(X, y)
+            X_train_resampled, y_train_resampled = undersampler.fit_resample(X, y)
         else:
-            X_train_resampled, y_train_resampled = oversampler.fit_resample(X, y)
+            X_train_resampled, y_train_resampled = undersampler.fit_resample(X, y)
 
         # Update weights epoch times
         for _ in range(epochs):
-            W = one_sided_averaged_gradient_estimator(W=W, q=q, beta=beta, bias=bias, X=X, y=y, iteration=epochs)
+            W = one_sided_averaged_gradient_estimator(W=W, q=q, beta=beta, bias=bias, X=X_train_resampled,
+                                                      y=y_train_resampled, iteration=epochs)
             loss_hist.append(loss_funct(W, X * W, y))
             weights.append(W)
 
         print_progress_bar(config + 1, n_splits)
 
-
     # Check final performance
     print("best W is ", weights[loss_hist.index(min(loss_hist))])
     print("Final performance is: ", min(loss_hist))
-
-    # while not loss_queue.empty():
-    #    loss_hist.append(loss_queue.get())
 
     # Print performance over iterations
     plt.bar(range(len(loss_hist)), loss_hist)
@@ -113,10 +116,22 @@ if __name__ == '__main__':
     # Show the plot
     plt.show()
 
-    file_path = "weights.pkl"
+    file_path = "weights_2.pkl"
 
     # Save the list as a binary file
     with open(file_path, "wb") as file:
         pickle.dump(weights[loss_hist.index(min(loss_hist))], file)
 
     print("List saved to", file_path)
+
+    df = pd.DataFrame(W-W_0)
+    def color_negative_red(val):
+        color = 'red' if val < 0.5 else 'green'  # Define your color conditions
+        return f'color: {color}'
+
+
+    # Apply the custom styling function to the dataframe
+    styled_df = df.style.applymap(color_negative_red)
+
+    # Display the styled dataframe
+    df.to_csv('output.csv', index=False)

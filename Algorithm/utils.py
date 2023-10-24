@@ -3,7 +3,8 @@ import math
 import numpy as np
 import pandas as pd
 import joblib
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
+
 
 def transfer_X(X, W):
     X_hat = X * W
@@ -13,16 +14,22 @@ def transfer_X(X, W):
 def loss_funct(W, X, y):
     y_true = y
     sample_weights = {
-        1: 1.166667,
+        1: 1.66667,
         2: 3.5,
-        3: 0.538462
+        3: 0.53846154
     }
     X_hat = transfer_X(X, W)
     model = load_model()
     output = model.predict_proba(X_hat)
     output_translated = map_output(output)
     loss = log_loss(y, output_translated, labels=np.array([0, 1, 2]), sample_weight=[sample_weights[y] for y in y_true])
-    return loss
+
+    class_of_interest = 1
+    predictions = np.argmax(output_translated, axis=1)
+    loss_p = precision_score(y_true, predictions, labels = [class_of_interest], #labels=np.unique(predictions),  # labels=np.array([0, 1, 2]),
+                             average='micro', zero_division=0)
+
+    return loss #+ (1 - 0.1 * loss_p)
 
 
 def load_model():
@@ -41,16 +48,17 @@ def get_U(W):
     # Generate Random Vector U
     # U_j ∈ R_d is a vector that is uniformly drawn at random from a unit Euclidean sphere
     U_j = np.random.normal(size=W.shape)
-    U_j /= np.linalg.norm(U_j)
+    # U_j /= np.linalg.norm(U_j)
 
-    return 10*U_j
+    return U_j
+
 
 def update_W(W, alpha, gradient, iteration):
     # linear
-    #W = W + alpha * gradient
+    W = W + alpha * gradient
     # e-Function
-    decay = 0.02
-    W = W + math.exp(-decay*iteration) * alpha * gradient
+    #decay = 0.005
+    #W = W + math.exp(-decay*iteration) * alpha * gradient
 
     return W
 
@@ -63,8 +71,8 @@ def load_small_X():
 def load_small_dataset(sample_size):
     y = pd.read_parquet('../Notebooks/turbofan_RUL.parquet', engine='pyarrow')
     X = pd.read_parquet('../Notebooks/turbofan_features.parquet', engine='pyarrow')
-    #y = y.sample(sample_size)
-    #X = X.sample(sample_size)
+    # y = y.sample(sample_size)
+    # X = X.sample(sample_size)
     y = y.values.T
     flat_list = [item for sublist in y for item in sublist]
     flat_list = np.array(flat_list)
