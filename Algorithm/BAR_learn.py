@@ -5,7 +5,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from utils import *
 
 
-def one_sided_averaged_gradient_estimator(W, q, beta, bias, X, y, iteration, learning_rate, punishment, num_processes):
+def one_sided_averaged_gradient_estimator(W, q, beta, bias, X, y, iteration, learning_rate, punishment, num_processes, factor):
     """
     Creates Updated Weights based on Zeroth Order-Optimisation.
     Calculates the gradient of W in q different directions based on a loss function
@@ -31,7 +31,7 @@ def one_sided_averaged_gradient_estimator(W, q, beta, bias, X, y, iteration, lea
     gradient_estimates = []
 
     for _ in range(q):
-        U_j = get_U(W)
+        U_j = get_U(W, factor)
 
         loss_plus = loss_funct(W=W + beta * U_j, X=X, y=y, punishment=punishment)
         loss_minus = loss_funct(W=W, X=X, y=y, punishment=punishment)
@@ -44,11 +44,11 @@ def one_sided_averaged_gradient_estimator(W, q, beta, bias, X, y, iteration, lea
     return W_updated
 
 
-def data_setup(model=joblib.load('../Notebooks/classification_model.joblib'),
-               X=pd.read_pickle('../Data/X_t_train.pkl'),
-               y=pd.read_pickle('../Data/y_t_train.pkl'),
-               X_s=pd.read_parquet(path='../Notebooks/turbofan_features.parquet', engine='pyarrow'),
-               learning_rate=0.4, epochs=20, q=20, beta=1, bias=1, n_splits=5, punishment=0.5, num_processes=5):
+def data_setup(
+               X=pd.read_pickle('Data/X_t_train.pkl'),
+               y=pd.read_pickle('Data/y_t_train.pkl'),
+               X_s=pd.read_parquet(path='Notebooks/turbofan_features.parquet', engine='pyarrow'),
+               learning_rate=0.4, epochs=20, q=20, beta=1, bias=1, n_splits=5, punishment=0.5, num_processes=5, factor=50):
     loss_hist = []
     weights = []
 
@@ -89,7 +89,7 @@ def data_setup(model=joblib.load('../Notebooks/classification_model.joblib'),
         for _ in range(epochs):
             W = one_sided_averaged_gradient_estimator(W=W, q=q, beta=beta, bias=bias, X=X_train_resampled,
                                                       y=y_train_resampled, iteration=_,
-                                                      learning_rate=learning_rate, punishment=punishment, num_processes=num_processes)
+                                                      learning_rate=learning_rate, punishment=punishment, num_processes=num_processes, factor=factor)
             loss_hist.append(loss_funct(W, X, y, punishment=punishment))
             weights.append(W)
 
@@ -101,7 +101,7 @@ def data_setup(model=joblib.load('../Notebooks/classification_model.joblib'),
     print("Corresponding performance is ", loss_funct(weights[loss_hist.index(min(loss_hist))], X, y, 2))
 
     # Print performance over iterations
-    plot_loss(loss_hist=loss_hist)
+    #plot_loss(loss_hist=loss_hist)
 
     store_weights(file_path="weights.pkl", weights=weights[loss_hist.index(min(loss_hist))], loss=min(loss_hist), W=W, W_0=W_0)
 
@@ -114,8 +114,8 @@ def data_setup(model=joblib.load('../Notebooks/classification_model.joblib'),
 if __name__ == '__main__':
     num_processes = multiprocessing.cpu_count()
 
-    result = data_setup(model=joblib.load('../Notebooks/classification_model.joblib'),
-               X=pd.read_pickle('../Data/X_t_train.pkl'),
-               y=pd.read_pickle('../Data/y_t_train.pkl'),
-               X_s=pd.read_parquet(path='../Notebooks/turbofan_features.parquet', engine='pyarrow'),
-               learning_rate=0.01, epochs=500, q=15, beta=1, bias=1, n_splits=1, punishment=2, num_processes=1)
+    result = data_setup(
+               X=pd.read_pickle('Data/X_t_train.pkl'),
+               y=pd.read_pickle('Data/y_t_train.pkl'),
+               X_s=pd.read_parquet(path='Notebooks/turbofan_features.parquet', engine='pyarrow'),
+               learning_rate=1, epochs=120, q=15, beta=1, bias=1, n_splits=5, punishment=5, num_processes=1, factor=100)

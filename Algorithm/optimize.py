@@ -3,7 +3,7 @@ import multiprocessing
 import pandas as pd
 from typing import Iterable, Any
 from itertools import product
-from Algorithm.utils import write_to_excel
+from utils import write_to_excel
 from BAR_learn import data_setup
 
 
@@ -13,16 +13,17 @@ def grid_parameters(parameters: dict[str, Iterable[Any]]) -> Iterable[dict[str, 
 
 
 parameters = {
-    "model": [joblib.load('../Notebooks/classification_model.joblib')],
-    "X": [pd.read_pickle('../Data/X_t_train.pkl')],
-    "y": [pd.read_pickle('../Data/y_t_train.pkl')],
-    "X_s": [pd.read_parquet(path='../Notebooks/turbofan_features.parquet', engine='pyarrow')],
-    "learning_rate": [round(0.1 + i * 0.1, 1) for i in range(int(1 / 0.1) + 1)],
-    "epochs": [25, 50, 75, 100],
-    "q": [5, 10, 15, 20],
+    "model": [joblib.load('Notebooks/classification_model.joblib')],
+    "X": [pd.read_pickle('Data/X_t_train.pkl')],
+    "y": [pd.read_pickle('Data/y_t_train.pkl')],
+    "X_s": [pd.read_parquet(path='Notebooks/turbofan_features.parquet', engine='pyarrow')],
+    "learning_rate": [0.5, 1, 2, 5],
+    "epochs": [120],
+    "q": [5, 15, 30],
     "bias": [1],
-    "n_splits": [1, 2, 3, 4, 5, 10],
-    "punishment": [0, 0.5, 1, 1.5, 2, 5]}
+    "n_splits": [5],
+    "punishment": [5, 7, 10, 15],
+    "factor": [50, 75, 100, 125]}
 
 
 def get_performance(parameters):
@@ -42,20 +43,21 @@ def parallel_grid_search(parameter_sets, num_processes):
 
 if __name__ == "__main__":
     parameter_grid = [
-        {"learning_rate": lr, "epochs": ep, "q": q, "bias": b, "n_splits": n_s, "punishment": pun}
-        for lr, ep, q, b, n_s, pun in product(
+        {"learning_rate": lr, "epochs": ep, "q": q, "bias": b, "n_splits": n_s, "punishment": pun, "factor": fac}
+        for lr, ep, q, b, n_s, pun, fac in product(
             parameters["learning_rate"],
             parameters["epochs"],
             parameters["q"],
             parameters["bias"],
             parameters["n_splits"],
-            parameters["punishment"]
+            parameters["punishment"],
+            parameters["factor"]
         )
     ]
 
     num_processes = multiprocessing.cpu_count()
-
-    grid_search_results = parallel_grid_search(parameter_grid, num_processes)
-    write_to_excel(grid_search_results, path='../Data/Optimization.xlsx')
+    for i in range(5):
+        grid_search_results = parallel_grid_search(parameter_grid, num_processes)
+        write_to_excel(grid_search_results, path='Data/Optimization_3.xlsx')
     print("Grid search results:", grid_search_results)
     print("finished")

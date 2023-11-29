@@ -76,7 +76,10 @@ def load_model():
     :return: sklearn model
     :rtype: sklearn.model
     '''
-    model = joblib.load('../Notebooks/classification_model.joblib')
+    try:
+        model = joblib.load('Notebooks/classification_model.joblib')
+    except:
+        model = joblib.load('../Notebooks/classification_model.joblib')
     return model
 
 
@@ -96,14 +99,14 @@ def map_output(y):
     return y_norm
 
 
-def get_U(W):
+def get_U(W, factor):
     '''
     Generates a vector uniformly drawn at random from a unit euclidean sphere of the dimension of W.
     :param W: Weight Vector
     :return: random vector of dimension dim(W)
     :rtype: numpy.ndarray
     '''
-    U_j = np.random.normal(size=W.shape)
+    U_j = factor * np.random.normal(size=W.shape)
     # U_j /= np.linalg.norm(U_j)
 
     return U_j
@@ -217,7 +220,7 @@ def calculate_f1_score(W, X, y):
 def write_to_excel(settings, path):
     keys_to_exclude = ['model', 'X', 'y', 'X_s']
     wb = openpyxl.load_workbook(path)
-    sheet = wb['Sheet3']
+    sheet = wb['Sheet1']
     next_row = sheet.max_row + 1
 
     for setting in settings:
