@@ -1,6 +1,7 @@
 import joblib
 import multiprocessing
 import pandas as pd
+import numpy as np
 from typing import Iterable, Any
 from itertools import product
 from utils import write_to_excel
@@ -17,25 +18,27 @@ parameters = {
     "X": [pd.read_pickle('Data/X_t_train.pkl')],
     "y": [pd.read_pickle('Data/y_t_train.pkl')],
     "X_s": [pd.read_parquet(path='Notebooks/turbofan_features.parquet', engine='pyarrow')],
-    "learning_rate": [0.5, 1, 2, 5],
+    "learning_rate": [0.6],
     "epochs": [120],
-    "q": [5, 15, 30],
+    "q": [50],
     "bias": [1],
     "n_splits": [5],
-    "punishment": [5, 7, 10, 15],
-    "factor": [50, 75, 100, 125]}
+    "punishment": [7],
+    "factor": [135]}
 
 
 def get_performance(parameters):
     print(parameters)
-    result = data_setup(**parameters)
+    parameters = parameters[0]
+    result, weights = data_setup(**parameters)
     parameters['result'] = result
+    parameters['weights'] = np.array2string(pd.DataFrame(np.concatenate(weights, axis=0)).values.flatten())
     return parameters
 
 
 def parallel_grid_search(parameter_sets, num_processes):
     pool = multiprocessing.Pool(processes=num_processes)
-    results = pool.map(get_performance, parameter_sets)
+    results = pool.map(get_performance, [parameter_sets]*num_processes)
     pool.close()
     pool.join()
     return results

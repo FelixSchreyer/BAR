@@ -106,7 +106,7 @@ def data_setup(
     store_weights(file_path="weights.pkl", weights=weights[loss_hist.index(min(loss_hist))], loss=min(loss_hist), W=W, W_0=W_0)
 
     result = calculate_f1_score(W, X, y)
-    return result
+    return result, weights[loss_hist.index(min(loss_hist))]
 
 
 
